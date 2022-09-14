@@ -8,8 +8,28 @@ import ARKit
 
 class ViewController: UIViewController, ARSCNViewDelegate {
 
+    @IBOutlet weak var startStopButton: UIButton!
     @IBOutlet var sceneView: ARSCNView!
+    @IBAction func startStopAction(_ sender: Any) {
+        if startSession {
+            createCSV()
+            startStopButton.setTitle("Start", for: .normal)
+            sceneView.session.pause()
+            sceneView.scene.rootNode.enumerateChildNodes { (node, stop) in
+                node.removeFromParentNode()
+            }
+            if let configuration = sceneView.session.configuration {
+                sceneView.session.run(configuration,
+                                      options: .resetTracking)
+            }
+            startSession = false
+        } else {
+            startStopButton.setTitle("Stop", for: .normal)
+            startSession = true
+        }
+    }
     
+    var startSession = false
     var dotNodes = [SCNNode]()
     var textNode = SCNNode()
     let compassHeading = CompassHeading()
@@ -23,24 +43,19 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let location = touches.first?.location(in: sceneView) {
-            let locationsInSpace = sceneView.hitTest(location, types: .featurePoint)
-            
-            if let locationInSpace = locationsInSpace.first {
-                addDot(at: locationInSpace)
+        if startSession {
+            if let location = touches.first?.location(in: sceneView) {
+                let locationsInSpace = sceneView.hitTest(location, types: .featurePoint)
+                
+                if let locationInSpace = locationsInSpace.first {
+                    addDot(at: locationInSpace)
+                }
             }
         }
     }
     
     func addDot(at location: ARHitTestResult) {
         
-        if dots.count == 40 {
-            createCSV()
-            dotNodes.removeAll()
-            dots.removeAll()
-        }
-        
-
         dots.append(["\(textNode.position.x)", "\(textNode.position.y)", "\(textNode.position.z)" ,"\(compassHeading.degrees)"])
         let dotGeometry = SCNSphere(radius: 0.005)
         let dotNode = SCNNode()
@@ -86,12 +101,9 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         textNode.removeFromParentNode()
         let text = SCNText(string: "\(dotNodes.count)", extrusionDepth: 1.0)
         text.firstMaterial?.diffuse.contents = UIColor.blue
-
         textNode = SCNNode(geometry: text)
         textNode.position = position
-
         textNode.scale = SCNVector3(0.01, 0.01, 0.01)
-
         sceneView.scene.rootNode.addChildNode(textNode)
     }
 
@@ -112,7 +124,6 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             csvText = csvText.appending("\(String(describing: dots.firstIndex(of: dot)!)) ,\(dot[0]),\(dot[1]),\(dot[2]),\(dot[3])\n")
         }
 
-        
         if FileManager.default.fileExists(atPath: logFile.path) {
             if let fileHandle = try? FileHandle(forWritingTo: logFile) {
                 fileHandle.seekToEndOfFile()
@@ -129,6 +140,8 @@ class ViewController: UIViewController, ARSCNViewDelegate {
             }
             print(logFile)
         }
+        dotNodes.removeAll()
+        dots.removeAll()
     }
     
     override func viewWillAppear(_ animated: Bool) {
