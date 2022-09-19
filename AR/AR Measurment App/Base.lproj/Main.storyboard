@@ -20,26 +20,23 @@
                                 <rect key="frame" x="0.0" y="44" width="414" height="822"/>
                                 <subviews>
                                     <arscnView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="BrB-h1-WRS">
-                                        <rect key="frame" x="0.0" y="0.0" width="414" height="772"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="414" height="762"/>
                                     </arscnView>
-                                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="tGw-g2-10x">
-                                        <rect key="frame" x="0.0" y="772" width="414" height="50"/>
-                                        <color key="backgroundColor" red="0.92213708159999996" green="0.29307565089999998" blue="0.3921444416" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="1Kn-yc-rvO">
+                                        <rect key="frame" x="0.0" y="762" width="414" height="60"/>
                                         <constraints>
-                                            <constraint firstAttribute="height" constant="50" id="0Lc-2w-pGo"/>
+                                            <constraint firstAttribute="height" constant="60" id="Igo-MI-0xP"/>
                                         </constraints>
-                                        <fontDescription key="fontDescription" name="Arial-BoldMT" family="Arial" pointSize="20"/>
-                                        <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                                        <state key="normal" title="Start">
-                                            <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                        </state>
-                                        <connections>
-                                            <action selector="startStopAction:" destination="BV1-FR-VrT" eventType="touchUpInside" id="QjK-TA-4F7"/>
-                                        </connections>
-                                    </button>
+                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                        <nil key="textColor"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
                                 </subviews>
                                 <constraints>
-                                    <constraint firstItem="tGw-g2-10x" firstAttribute="top" secondItem="BrB-h1-WRS" secondAttribute="bottom" id="PfH-aZ-gn6"/>
+                                    <constraint firstItem="1Kn-yc-rvO" firstAttribute="leading" secondItem="pfg-7V-46C" secondAttribute="leading" id="73l-o3-5xN"/>
+                                    <constraint firstAttribute="trailing" secondItem="1Kn-yc-rvO" secondAttribute="trailing" id="NKY-Lq-8FM"/>
+                                    <constraint firstAttribute="bottom" secondItem="1Kn-yc-rvO" secondAttribute="bottom" id="b0h-kt-Xfb"/>
+                                    <constraint firstItem="1Kn-yc-rvO" firstAttribute="top" secondItem="BrB-h1-WRS" secondAttribute="bottom" id="bap-mX-SJs"/>
                                 </constraints>
                             </stackView>
                         </subviews>
@@ -54,7 +51,7 @@
                     </view>
                     <connections>
                         <outlet property="sceneView" destination="BrB-h1-WRS" id="5nT-qQ-ynl"/>
-                        <outlet property="startStopButton" destination="tGw-g2-10x" id="hjW-Wi-HjK"/>
+                        <outlet property="textLabel" destination="1Kn-yc-rvO" id="nLR-4B-su7"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="SZV-WD-TEh" sceneMemberID="firstResponder"/>

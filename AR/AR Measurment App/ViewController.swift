@@ -5,44 +5,92 @@
 import UIKit
 import SceneKit
 import ARKit
+import CoreMotion
 
 class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
-    @IBOutlet weak var startStopButton: UIButton!
-    @IBOutlet var sceneView: ARSCNView!
-    @IBAction func startStopAction(_ sender: Any) {
-        if startSession {
-            startStopButton.setTitle("Start", for: .normal)
-            startSession = false
-            createCSV()
-        } else {
-            startStopButton.setTitle("Stop", for: .normal)
-            startSession = true
-        }
-    }
     
-    var startSession = false
+    @IBOutlet weak var textLabel: UILabel!
+    @IBOutlet var sceneView: ARSCNView!
+
+    
+    var finishSession = false
     let compassHeading = CompassHeading()
+    let manager = CMMotionManager()
     var dots = [[String]]()
+    var fileName: String { "roadTrip\(counter)" }
+    var counter = 1
+    var flashIsOn = false
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Set the view's delegate
         sceneView.delegate = self
         sceneView.session.delegate = self
+        // automatically add light to the scene
+        sceneView.autoenablesDefaultLighting = true
+        manager.deviceMotionUpdateInterval = 0.1
+        let notificationCenter = NotificationCenter.default
+        notificationCenter.addObserver(self, selector: #selector(appMovedToBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        notificationCenter.addObserver(self, selector: #selector(appCameToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+        textLabel.text = "Session: \(fileName) is started"
     }
     
+    
+    @objc func appMovedToBackground() {
+        debugPrint("app enters background")
+        createCSV()
+    }
+    
+    @objc func appCameToForeground() {
+        debugPrint("app enters foreground")
+        counter += 1
+        textLabel.text = "Session: \(fileName) is started"
+    }
+    
+    
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        if startSession {
-            guard let pointFirst = frame.rawFeaturePoints?.points.first,
-                  let pointLast = frame.rawFeaturePoints?.points.last else { return }
-            dots.append(["\(pointFirst.x)", "\(pointFirst.y)", "\(pointFirst.z)", "\(compassHeading.degrees)"])
-            dots.append(["\(pointLast.x)", "\(pointLast.y)", "\(pointLast.z)", "\(compassHeading.degrees)"])
+        
+        switch UIScreen.main.brightness {
+        case 0 ... 0.6:
+            debugPrint("LOW LIGHT")
+            if !flashIsOn {
+                toggleFlash()
+                flashIsOn = true
+            }
+        default:
+            debugPrint("ENOUGH LIGHT")
+            if flashIsOn {
+                toggleFlash()
+                flashIsOn = false
+            }
+        }
+        
+        guard let pointFirst = frame.rawFeaturePoints?.points.first,
+              let pointLast = frame.rawFeaturePoints?.points.last else { return }
+        manager.startDeviceMotionUpdates(to: .main) { (motion, error) in
+            self.dots.append(["\(Date().currentTimeMillis())",
+                              "\(pointFirst.x)",
+                              "\(pointFirst.y)",
+                              "\(pointFirst.z)",
+                              "\(motion?.attitude.pitch ?? 0.0)",
+                              "\(motion?.attitude.roll ?? 0.0)",
+                              "\(motion?.attitude.yaw ?? 0.0)",
+                              "\(self.compassHeading.degrees)"])
+            self.dots.append(["\(Date().currentTimeMillis())",
+                              "\(pointLast.x)",
+                              "\(pointLast.y)",
+                              "\(pointLast.z)",
+                              "\(motion?.attitude.pitch ?? 0.0)",
+                              "\(motion?.attitude.roll ?? 0.0)",
+                              "\(motion?.attitude.yaw ?? 0.0)",
+                              "\(self.compassHeading.degrees)"])
         }
     }
     
     var logFile: URL? {
         guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
-        let fileName = "pointData.csv"
+        let fileName = "\(fileName).csv"
         return documentsDirectory.appendingPathComponent(fileName)
     }
     
@@ -50,9 +98,10 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         guard let logFile = logFile else {
             return
         }
-        var csvText = "\("pointID"),\("X"),\("Y"),\("Z"),\("Degrees")\n\n"
+        
+        var csvText = "\("timestamp"),\("X"),\("Y"),\("Z"),\("pitch"),\("roll"),\("yaw"),\("Degrees")\n\n"
         for dot in dots {
-            csvText = csvText.appending("\(String(describing: dots.firstIndex(of: dot)!)) ,\(dot[0]),\(dot[1]),\(dot[2]),\(dot[3])\n")
+            csvText = csvText.appending("\(dot[0]),\(dot[1]),\(dot[2]),\(dot[3]),\(dot[4]),\(dot[5]),\(dot[6]),\(dot[7]))\n")
         }
         if FileManager.default.fileExists(atPath: logFile.path) {
             if let fileHandle = try? FileHandle(forWritingTo: logFile) {
@@ -65,10 +114,10 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                 try csvText.write(to: logFile, atomically: true, encoding: String.Encoding.utf8)
                 
             } catch {
-                print("Failed to create file")
-                print("\(error)")
+                debugPrint("Failed to create file")
+                debugPrint("\(error)")
             }
-            print(logFile)
+            debugPrint(logFile)
         }
         dots.removeAll()
     }
@@ -85,5 +134,34 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         super.viewWillDisappear(animated)
         // Pause the view's session
         sceneView.session.pause()
+    }
+    
+    func toggleFlash() {
+        guard let device = AVCaptureDevice.default(for: AVMediaType.video) else { return }
+        guard device.hasTorch else { return }
+
+        do {
+            try device.lockForConfiguration()
+
+            if (device.torchMode == AVCaptureDevice.TorchMode.on) {
+                device.torchMode = AVCaptureDevice.TorchMode.off
+            } else {
+                do {
+                    try device.setTorchModeOn(level: 1.0)
+                } catch {
+                    debugPrint(error)
+                }
+            }
+
+            device.unlockForConfiguration()
+        } catch {
+            debugPrint(error)
+        }
+    }
+}
+
+extension Date {
+    func currentTimeMillis() -> Int64 {
+        return Int64(self.timeIntervalSince1970 * 1000)
     }
 }
