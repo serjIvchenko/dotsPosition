@@ -27,7 +27,10 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         // Set the view's delegate
         sceneView.delegate = self
         sceneView.session.delegate = self
+        sceneView.showsStatistics = true
         // automatically add light to the scene
+        let debugOptions: SCNDebugOptions = [ARSCNDebugOptions.showFeaturePoints,ARSCNDebugOptions.showWorldOrigin]
+        sceneView.debugOptions = debugOptions
         sceneView.autoenablesDefaultLighting = true
         manager.deviceMotionUpdateInterval = 0.1
         let notificationCenter = NotificationCenter.default
@@ -35,7 +38,16 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         notificationCenter.addObserver(self, selector: #selector(appCameToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         textLabel.text = "Session: \(fileName) is started"
     }
-    
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Create a session configuration
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.worldAlignment = .gravityAndHeading
+        configuration.planeDetection = .horizontal
+        // Run the view's session
+        sceneView.session.run(configuration)
+    }
     
     @objc func appMovedToBackground() {
         debugPrint("app enters background")
@@ -52,7 +64,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         
         switch UIScreen.main.brightness {
-        case 0 ... 0.6:
+        case 0 ... 0.5:
             debugPrint("LOW LIGHT")
             if !flashIsOn {
                 toggleFlash()
@@ -122,13 +134,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         dots.removeAll()
     }
     
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        // Create a session configuration
-        let configuration = ARWorldTrackingConfiguration()
-        // Run the view's session
-        sceneView.session.run(configuration)
-    }
+
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
