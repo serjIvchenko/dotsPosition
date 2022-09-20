@@ -27,10 +27,10 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         // Set the view's delegate
         sceneView.delegate = self
         sceneView.session.delegate = self
-        sceneView.showsStatistics = true
+//        sceneView.showsStatistics = true
         // automatically add light to the scene
-        let debugOptions: SCNDebugOptions = [ARSCNDebugOptions.showFeaturePoints,ARSCNDebugOptions.showWorldOrigin]
-        sceneView.debugOptions = debugOptions
+//        let debugOptions: SCNDebugOptions = [ARSCNDebugOptions.showFeaturePoints,ARSCNDebugOptions.showWorldOrigin]
+//        sceneView.debugOptions = debugOptions
         sceneView.autoenablesDefaultLighting = true
         manager.deviceMotionUpdateInterval = 0.1
         let notificationCenter = NotificationCenter.default
