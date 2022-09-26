@@ -6,6 +6,7 @@ import UIKit
 import SceneKit
 import ARKit
 import CoreMotion
+import CoreLocation
 
 class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
@@ -16,11 +17,34 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
     var finishSession = false
     let compassHeading = CompassHeading()
-    let manager = CMMotionManager()
+//    let manager = CMMotionManager()
     var dots = [[String]]()
     var fileName: String { "roadTrip\(counter)" }
     var counter = 1
     var flashIsOn = false
+    
+    // MotionManager
+    let motionManager = CMMotionManager()
+    
+    // CLLocationManager
+    var locationManager: CLLocationManager? = nil
+    
+    // Event handler
+    var updateMotionManagerHandler: CMMagnetometerHandler? = nil
+    var updateDeviceMotionHandler: CMDeviceMotionHandler? = nil
+    
+    // Timer for getting heading data
+    var headingTimer: Timer?
+    
+    // Magnetometer update interval
+    let updateInterval = 0.1
+    
+    var magneticFieldX = Double()
+    var magneticFieldY = Double()
+    var magneticFieldZ = Double()
+    var calibratedMagneticFieldX = Double()
+    var calibratedMagneticFieldY = Double()
+    var calibratedMagneticFieldZ = Double()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -29,11 +53,39 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         sceneView.session.delegate = self
         // automatically add light to the scene
         sceneView.autoenablesDefaultLighting = true
-        manager.deviceMotionUpdateInterval = 0.1
+        motionManager.deviceMotionUpdateInterval = 0.1
         let notificationCenter = NotificationCenter.default
         notificationCenter.addObserver(self, selector: #selector(appMovedToBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         notificationCenter.addObserver(self, selector: #selector(appCameToForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
         textLabel.text = "Session: \(fileName) is started"
+        
+        
+        locationManager = CLLocationManager()
+        locationManager?.headingFilter = kCLHeadingFilterNone
+                
+        if motionManager.isMagnetometerAvailable {
+            // Set data acquisition interval
+            motionManager.magnetometerUpdateInterval = updateInterval
+            motionManager.deviceMotionUpdateInterval = updateInterval
+            motionManager.showsDeviceMovementDisplay = true
+            
+            // Getting data from CMMotionManager
+            
+            updateMotionManagerHandler = {(magnetoData: CMMagnetometerData?, error:Error?) -> Void in
+                self.magneticFieldX = self.outputMagnetDataByMotionManager(magnet: magnetoData!.magneticField).x
+                self.magneticFieldY = self.outputMagnetDataByMotionManager(magnet: magnetoData!.magneticField).y
+                self.magneticFieldZ = self.outputMagnetDataByMotionManager(magnet: magnetoData!.magneticField).z
+            }
+            
+            // Getting data from CMDeviceMotion
+            updateDeviceMotionHandler = {(deviceMotion: CMDeviceMotion?, error: Error?) -> Void in
+                self.calibratedMagneticFieldX = self.outputMagnetDataByDeviceMotion(magnet: self.motionManager.deviceMotion!.magneticField).field.x
+                self.calibratedMagneticFieldY = self.outputMagnetDataByDeviceMotion(magnet: self.motionManager.deviceMotion!.magneticField).field.y
+                self.calibratedMagneticFieldZ = self.outputMagnetDataByDeviceMotion(magnet: self.motionManager.deviceMotion!.magneticField).field.z
+            }
+        }
+        
+        startMagnetometer()
     }
     
     
@@ -48,6 +100,16 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         textLabel.text = "Session: \(fileName) is started"
     }
     
+    func outputMagnetDataByMotionManager(magnet: CMMagneticField) -> CMMagneticField {
+        // Magnetometer
+        return magnet
+    }
+    
+    // Show calibrated magneetometer data
+    func outputMagnetDataByDeviceMotion(magnet: CMCalibratedMagneticField) -> CMCalibratedMagneticField  {
+        // Magnetometer
+        return magnet
+    }
     
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         
@@ -66,9 +128,11 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             }
         }
         
+        
+        
         guard let pointFirst = frame.rawFeaturePoints?.points.first,
               let pointLast = frame.rawFeaturePoints?.points.last else { return }
-        manager.startDeviceMotionUpdates(to: .main) { (motion, error) in
+        motionManager.startDeviceMotionUpdates(to: .main) { (motion, error) in
             self.dots.append(["\(Date().currentTimeMillis())",
                               "\(pointFirst.x)",
                               "\(pointFirst.y)",
@@ -76,7 +140,14 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                               "\(motion?.attitude.pitch ?? 0.0)",
                               "\(motion?.attitude.roll ?? 0.0)",
                               "\(motion?.attitude.yaw ?? 0.0)",
-                              "\(self.compassHeading.degrees)"])
+                              "\(self.compassHeading.degrees)",
+                              "\(self.magneticFieldX)",
+                              "\(self.magneticFieldY)",
+                              "\(self.magneticFieldZ)",
+                              "\(self.calibratedMagneticFieldX)",
+                              "\(self.calibratedMagneticFieldY)",
+                              "\(self.calibratedMagneticFieldZ)"])
+            
             self.dots.append(["\(Date().currentTimeMillis())",
                               "\(pointLast.x)",
                               "\(pointLast.y)",
@@ -84,7 +155,13 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                               "\(motion?.attitude.pitch ?? 0.0)",
                               "\(motion?.attitude.roll ?? 0.0)",
                               "\(motion?.attitude.yaw ?? 0.0)",
-                              "\(self.compassHeading.degrees)"])
+                              "\(self.compassHeading.degrees)",
+                              "\(self.magneticFieldX)",
+                              "\(self.magneticFieldY)",
+                              "\(self.magneticFieldZ)",
+                              "\(self.calibratedMagneticFieldX)",
+                              "\(self.calibratedMagneticFieldY)",
+                              "\(self.calibratedMagneticFieldZ)"])
         }
     }
     
@@ -94,14 +171,23 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         return documentsDirectory.appendingPathComponent(fileName)
     }
     
+    func startMagnetometer() {
+        guard let updateMotionManagerHandler = updateMotionManagerHandler else { return }
+        motionManager.startMagnetometerUpdates(to: OperationQueue.main, withHandler: updateMotionManagerHandler)
+        motionManager.startDeviceMotionUpdates(using: CMAttitudeReferenceFrame.xArbitraryCorrectedZVertical, to: OperationQueue.main, withHandler: updateDeviceMotionHandler!)
+        
+        locationManager?.startUpdatingHeading()
+        headingTimer = Timer.scheduledTimer(timeInterval: updateInterval, target: self, selector: #selector(ViewController.headingTimerUpdate), userInfo: nil, repeats: true)
+    }
+    
     func createCSV() {
         guard let logFile = logFile else {
             return
         }
         
-        var csvText = "\("timestamp"),\("X"),\("Y"),\("Z"),\("pitch"),\("roll"),\("yaw"),\("Degrees")\n\n"
+        var csvText = "\("timestamp"),\("X"),\("Y"),\("Z"),\("pitch"),\("roll"),\("yaw"),\("Degrees"),\("magneticFieldX"),\("magneticFieldY"),\("magneticFieldZ"),\("calibratedMagneticFieldX"),\("calibratedMagneticFieldY"),\("calibratedMagneticFieldZ")\n\n"
         for dot in dots {
-            csvText = csvText.appending("\(dot[0]),\(dot[1]),\(dot[2]),\(dot[3]),\(dot[4]),\(dot[5]),\(dot[6]),\(dot[7]))\n")
+            csvText = csvText.appending("\(dot[0]),\(dot[1]),\(dot[2]),\(dot[3]),\(dot[4]),\(dot[5]),\(dot[6]),\(dot[7]),\(dot[8]),\(dot[9]),\(dot[10]),\(dot[11]),\(dot[12]),\(dot[13])\n")
         }
         if FileManager.default.fileExists(atPath: logFile.path) {
             if let fileHandle = try? FileHandle(forWritingTo: logFile) {
@@ -157,6 +243,21 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         } catch {
             debugPrint(error)
         }
+    }
+    
+    @objc func headingTimerUpdate() {
+        let newHeading = self.locationManager?.heading
+        let x = newHeading?.x ?? 0.0
+        let y = newHeading?.y ?? 0.0
+        let z = newHeading?.z ?? 0.0
+        
+//        headingX.text = String(format: "%10f", x)
+//        headingY.text = String(format: "%10f", y)
+//        headingZ.text = String(format: "%10f", z)
+//        vector3.text = "vector3"
+        let total = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2))
+//        headingTotal.text = String(format: "%10f", total)
+        
     }
 }
 
