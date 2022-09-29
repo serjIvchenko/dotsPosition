@@ -52,6 +52,9 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         sceneView.delegate = self
         sceneView.session.delegate = self
         // automatically add light to the scene
+        let debugOptions: SCNDebugOptions = [ARSCNDebugOptions.showFeaturePoints,ARSCNDebugOptions.showWorldOrigin]
+        sceneView.debugOptions = debugOptions
+
         sceneView.autoenablesDefaultLighting = true
         motionManager.deviceMotionUpdateInterval = 0.1
         let notificationCenter = NotificationCenter.default
@@ -212,7 +215,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         super.viewWillAppear(animated)
         // Create a session configuration
         let configuration = ARWorldTrackingConfiguration()
-        configuration.worldAlignment = .gravity
+        print("configuration.worldAlignment \(configuration.worldAlignment)")
         // Run the view's session
         sceneView.session.run(configuration)
     }
