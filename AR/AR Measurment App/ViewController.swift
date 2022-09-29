@@ -212,6 +212,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         super.viewWillAppear(animated)
         // Create a session configuration
         let configuration = ARWorldTrackingConfiguration()
+        configuration.worldAlignment = .gravity
         // Run the view's session
         sceneView.session.run(configuration)
     }
