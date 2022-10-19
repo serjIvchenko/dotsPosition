@@ -13,11 +13,11 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
     @IBOutlet weak var textLabel: UILabel!
     @IBOutlet var sceneView: ARSCNView!
-
+    
     
     var finishSession = false
     let compassHeading = CompassHeading()
-//    let manager = CMMotionManager()
+    //    let manager = CMMotionManager()
     var dots = [[String]]()
     var fileName: String { "roadTrip\(counter)" }
     var counter = 1
@@ -54,7 +54,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         // automatically add light to the scene
         let debugOptions: SCNDebugOptions = [ARSCNDebugOptions.showFeaturePoints,ARSCNDebugOptions.showWorldOrigin]
         sceneView.debugOptions = debugOptions
-
+        
         sceneView.autoenablesDefaultLighting = true
         motionManager.deviceMotionUpdateInterval = 0.1
         let notificationCenter = NotificationCenter.default
@@ -65,7 +65,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         
         locationManager = CLLocationManager()
         locationManager?.headingFilter = kCLHeadingFilterNone
-                
+        
         if motionManager.isMagnetometerAvailable {
             // Set data acquisition interval
             motionManager.magnetometerUpdateInterval = updateInterval
@@ -149,7 +149,11 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                               "\(self.magneticFieldZ)",
                               "\(self.calibratedMagneticFieldX)",
                               "\(self.calibratedMagneticFieldY)",
-                              "\(self.calibratedMagneticFieldZ)"])
+                              "\(self.calibratedMagneticFieldZ)",
+                              "\(self.locationManager?.heading?.magneticHeading ?? 0)",
+                              "\(self.locationManager?.heading?.trueHeading ?? 0)",
+                              "\(self.locationManager?.location?.coordinate.latitude ?? 0)",
+                              "\(self.locationManager?.location?.coordinate.longitude ?? 0)"])
             
             self.dots.append(["\(Date().currentTimeMillis())",
                               "\(pointLast.x)",
@@ -164,7 +168,11 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                               "\(self.magneticFieldZ)",
                               "\(self.calibratedMagneticFieldX)",
                               "\(self.calibratedMagneticFieldY)",
-                              "\(self.calibratedMagneticFieldZ)"])
+                              "\(self.calibratedMagneticFieldZ)",
+                              "\(self.locationManager?.heading?.magneticHeading ?? 0)",
+                              "\(self.locationManager?.heading?.trueHeading ?? 0)",
+                              "\(self.locationManager?.location?.coordinate.latitude ?? 0)",
+                              "\(self.locationManager?.location?.coordinate.longitude ?? 0)"])
         }
     }
     
@@ -188,9 +196,9 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             return
         }
         
-        var csvText = "\("timestamp"),\("X"),\("Y"),\("Z"),\("pitch"),\("roll"),\("yaw"),\("Degrees"),\("magneticFieldX"),\("magneticFieldY"),\("magneticFieldZ"),\("calibratedMagneticFieldX"),\("calibratedMagneticFieldY"),\("calibratedMagneticFieldZ")\n\n"
+        var csvText = "\("timestamp"),\("X"),\("Y"),\("Z"),\("pitch"),\("roll"),\("yaw"),\("Degrees"),\("magneticFieldX"),\("magneticFieldY"),\("magneticFieldZ"),\("calibratedMagneticFieldX"),\("calibratedMagneticFieldY"),\("calibratedMagneticFieldZ"),\("magneticHeading"),\("trueHeading"),\("latitude"),\("longitude")\n\n"
         for dot in dots {
-            csvText = csvText.appending("\(dot[0]),\(dot[1]),\(dot[2]),\(dot[3]),\(dot[4]),\(dot[5]),\(dot[6]),\(dot[7]),\(dot[8]),\(dot[9]),\(dot[10]),\(dot[11]),\(dot[12]),\(dot[13])\n")
+            csvText = csvText.appending("\(dot[0]),\(dot[1]),\(dot[2]),\(dot[3]),\(dot[4]),\(dot[5]),\(dot[6]),\(dot[7]),\(dot[8]),\(dot[9]),\(dot[10]),\(dot[11]),\(dot[12]),\(dot[13]),\(dot[14]),\(dot[15]),\(dot[16]),\(dot[17])\n")
         }
         if FileManager.default.fileExists(atPath: logFile.path) {
             if let fileHandle = try? FileHandle(forWritingTo: logFile) {
@@ -229,10 +237,10 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     func toggleFlash() {
         guard let device = AVCaptureDevice.default(for: AVMediaType.video) else { return }
         guard device.hasTorch else { return }
-
+        
         do {
             try device.lockForConfiguration()
-
+            
             if (device.torchMode == AVCaptureDevice.TorchMode.on) {
                 device.torchMode = AVCaptureDevice.TorchMode.off
             } else {
@@ -242,7 +250,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                     debugPrint(error)
                 }
             }
-
+            
             device.unlockForConfiguration()
         } catch {
             debugPrint(error)
@@ -255,12 +263,12 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         let y = newHeading?.y ?? 0.0
         let z = newHeading?.z ?? 0.0
         
-//        headingX.text = String(format: "%10f", x)
-//        headingY.text = String(format: "%10f", y)
-//        headingZ.text = String(format: "%10f", z)
-//        vector3.text = "vector3"
+        //        headingX.text = String(format: "%10f", x)
+        //        headingY.text = String(format: "%10f", y)
+        //        headingZ.text = String(format: "%10f", z)
+        //        vector3.text = "vector3"
         let total = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2))
-//        headingTotal.text = String(format: "%10f", total)
+        //        headingTotal.text = String(format: "%10f", total)
         
     }
 }
